@@ -26,7 +26,6 @@ pub struct AppConfig {
     pub pid: u32,
     pub existing_handle: Option<u64>,
     pub output: PathBuf,
-    pub make_jar: bool,
 }
 
 pub fn prompt_config() -> Result<AppConfig> {
@@ -56,14 +55,11 @@ pub fn prompt_config() -> Result<AppConfig> {
     } else {
         output_text.into()
     };
-    let make_jar = prompt_yes_no("Create classes.jar", true)?;
-
     Ok(AppConfig {
         connection,
         pid,
         existing_handle,
         output,
-        make_jar,
     })
 }
 
@@ -83,19 +79,6 @@ fn parse_handle(value: &str) -> Result<u64> {
         bail!("HANDLE cannot be NULL or INVALID_HANDLE_VALUE")
     }
     Ok(parsed)
-}
-
-fn prompt_yes_no(label: &str, default: bool) -> Result<bool> {
-    let suffix = if default { "Y/n" } else { "y/N" };
-    match prompt(&format!("{label} [{suffix}]: "))?
-        .to_ascii_lowercase()
-        .as_str()
-    {
-        "" => Ok(default),
-        "y" | "yes" | "1" => Ok(true),
-        "n" | "no" | "0" => Ok(false),
-        _ => bail!("expected yes or no"),
-    }
 }
 
 fn prompt(message: &str) -> Result<String> {

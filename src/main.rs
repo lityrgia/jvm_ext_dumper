@@ -95,24 +95,26 @@ fn run() -> Result<()> {
         report.classes.len()
     );
     info!(
-        "classfiles: written={} failed={}",
+        "classfiles: archived={} failed={}",
         report.classfiles_written, report.classfiles_failed
     );
     for failure in &report.classfile_failures {
         warn!("classfile skipped: {failure}");
     }
-    if config.make_jar && report.classfiles_written > 0 {
-        info!(
-            "JAR written to {}",
-            config.output.join("classes.jar").display()
+    info!(
+        "JAR written to {} ({} case-sensitive entries, {} exact-name duplicates skipped)",
+        config.output.join("classes.jar").display(),
+        report.classfiles_written,
+        report.archive_duplicates,
+    );
+    if report.archive_duplicates > 0 {
+        warn!(
+            "exact-name duplicates from different class loaders skipped: {}",
+            report.archive_duplicates
         );
     }
     info!("next: {}", report.next_step);
-    info!(
-        "output={} jar={}",
-        config.output.display(),
-        if config.make_jar { "yes" } else { "no" }
-    );
+    info!("output={}", config.output.display());
     info!("external metadata traversal completed");
     Ok(())
 }
