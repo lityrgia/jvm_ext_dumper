@@ -1,0 +1,21 @@
+[package]
+name = "jvm_ext_dumper"
+version = "0.1.0"
+edition = "2024"
+description = "Read-only HotSpot 8 class metadata dumper for Windows"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+anyhow = "1"
+spdlog-rs = "0.5"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Memory",
+    "Win32_System_Threading",
+] }
