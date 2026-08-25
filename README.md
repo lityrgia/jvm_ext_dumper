@@ -10,7 +10,7 @@ JVM External Dumper · HotSpot 8
 Target PID: <your pid>
 ```
 
-## How it works
+## How it works 🎈
 
 The dumper reads HotSpot metadata from the target process. It first uses
 exported `gHotSpotVMStructs` and `gHotSpotVMTypes`; if exports are stripped, it
@@ -19,7 +19,7 @@ a validated structural heuristic starting from the `java/lang/Object` `Symbol`
 and follows `ConstantPool`/`InstanceKlass` relationships. Reconstructed classes
 are written directly to `classes.jar`.
 
-## Build
+## Build ♟️
 
 ```bash
 git clone https://github.com/lityrgia/jvm_ext_dumper.git
