@@ -6,9 +6,7 @@ use std::{
 
 use anyhow::{Context, Result, bail};
 use windows_sys::Win32::{
-    Foundation::{
-        CloseHandle, DUPLICATE_SAME_ACCESS, DuplicateHandle, HANDLE, INVALID_HANDLE_VALUE,
-    },
+    Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE},
     Security::{GetTokenInformation, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation},
     System::{
         Diagnostics::{
@@ -20,8 +18,8 @@ use windows_sys::Win32::{
         },
         Memory::{MEM_COMMIT, MEMORY_BASIC_INFORMATION, PAGE_GUARD, PAGE_NOACCESS, VirtualQueryEx},
         Threading::{
-            GetCurrentProcess, GetProcessId, OpenProcess, OpenProcessToken,
-            PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
+            GetCurrentProcess, OpenProcess, OpenProcessToken, PROCESS_QUERY_INFORMATION,
+            PROCESS_VM_READ,
         },
     },
 };
@@ -40,50 +38,6 @@ impl TargetProcess {
             return Err(std::io::Error::last_os_error()).context("OpenProcess failed");
         }
         Ok(Self { pid, handle })
-    }
-
-    pub fn from_existing_handle(pid: u32, raw_handle: u64) -> Result<Self> {
-        let source = raw_handle as usize as HANDLE;
-        if source.is_null() || source == INVALID_HANDLE_VALUE {
-            bail!("supplied HANDLE is NULL or INVALID_HANDLE_VALUE")
-        }
-
-        // Duplicate the caller-supplied handle so TargetProcess owns only its
-        // private copy and never closes the operator's original handle.
-        let current = unsafe { GetCurrentProcess() };
-        let mut duplicate = std::ptr::null_mut();
-        let ok = unsafe {
-            DuplicateHandle(
-                current,
-                source,
-                current,
-                &mut duplicate,
-                0,
-                0,
-                DUPLICATE_SAME_ACCESS,
-            )
-        };
-        if ok == 0 {
-            return Err(std::io::Error::last_os_error()).context(
-                "DuplicateHandle failed; the HANDLE must be valid in this process (usually inherited from its launcher)",
-            );
-        }
-
-        let actual_pid = unsafe { GetProcessId(duplicate) };
-        if actual_pid == 0 {
-            unsafe { CloseHandle(duplicate) };
-            return Err(std::io::Error::last_os_error())
-                .context("GetProcessId failed for supplied HANDLE");
-        }
-        if actual_pid != pid {
-            unsafe { CloseHandle(duplicate) };
-            bail!("supplied HANDLE belongs to PID {actual_pid}, expected PID {pid}")
-        }
-
-        Ok(Self {
-            pid,
-            handle: duplicate,
-        })
     }
 
     pub const fn pid(&self) -> u32 {

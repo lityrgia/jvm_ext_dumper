@@ -6,9 +6,6 @@ impl TargetProcess {
     pub fn open_read_only(_pid: u32) -> Result<Self> {
         bail!("Windows is required")
     }
-    pub fn from_existing_handle(_pid: u32, _raw_handle: u64) -> Result<Self> {
-        bail!("Windows is required")
-    }
     pub fn pid(&self) -> u32 {
         0
     }
