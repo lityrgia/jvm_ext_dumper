@@ -1,10 +1,10 @@
-# Rust build artifacts
+.gitignore
+
 /target/
 
-# Generated/runtime output
 /dump/
 /jvm_ext_dumper.exe
 
-# Local analysis helpers
 /tools/
+
 README.md
