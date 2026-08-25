@@ -34,6 +34,7 @@ pub struct DiscoveryReport {
     pub classfiles_written: usize,
     pub classfiles_failed: usize,
     pub classfile_failures: Vec<String>,
+    pub archive_duplicates: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -126,7 +127,7 @@ pub fn locate_hotspot(process: &TargetProcess, output: &Path) -> Result<Discover
         &located.vmstructs,
         &located.vmtypes,
         output,
-    );
+    )?;
 
     let next_step = "optional debug and annotation attributes";
     Ok(DiscoveryReport {
@@ -144,6 +145,7 @@ pub fn locate_hotspot(process: &TargetProcess, output: &Path) -> Result<Discover
         classfiles_written: dump.written,
         classfiles_failed: dump.failed,
         classfile_failures: dump.failures,
+        archive_duplicates: dump.archive_duplicates,
     })
 }
 

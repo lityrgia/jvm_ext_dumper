@@ -1,13 +1,13 @@
 mod archive;
 mod bytecode;
 
-use std::{fs, path::Path};
+use std::path::Path;
 
 use anyhow::{Context, Result, bail};
 
 use crate::platform::RemoteMemory;
 
-pub use archive::make_jar;
+use archive::JarArchive;
 use bytecode::restore_bytecodes;
 
 use super::{dictionary::DiscoveredClass, vmstructs::VmStructTable, vmtypes::VmTypes};
@@ -17,6 +17,7 @@ pub struct DumpReport {
     pub written: usize,
     pub failed: usize,
     pub failures: Vec<String>,
+    pub archive_duplicates: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -112,36 +113,45 @@ pub fn dump_all<M: RemoteMemory>(
     vm: &VmStructTable,
     types: &VmTypes,
     output: &Path,
-) -> DumpReport {
+) -> Result<DumpReport> {
     let layout = match Layout::new(vm, types) {
         Ok(v) => v,
         Err(_) => {
-            return DumpReport {
+            return Ok(DumpReport {
                 written: 0,
                 failed: classes.len(),
                 failures: vec![
                     "HotSpot layout is missing required VMStructs/VMTypes entries".into(),
                 ],
-            };
+                ..DumpReport::default()
+            });
         }
     };
+    let mut archive = JarArchive::create(output)?;
     let mut report = DumpReport::default();
     for class in classes {
-        match reconstruct(memory, class, &layout)
-            .and_then(|bytes| write_class(output, &class.internal_name, &bytes))
-        {
-            Ok(()) => report.written += 1,
-            Err(error) => {
-                report.failed += 1;
-                if report.failures.len() < 8 {
-                    report
-                        .failures
-                        .push(format!("{}: {error:#}", class.internal_name));
+        match reconstruct(memory, class, &layout) {
+            Ok(bytes) => {
+                if archive.add_class(&class.internal_name, &bytes)? {
+                    report.written += 1;
+                } else {
+                    report.archive_duplicates += 1;
                 }
             }
+            Err(error) => record_failure(&mut report, class, error),
         }
     }
-    report
+    archive.finish()?;
+    Ok(report)
+}
+
+fn record_failure(report: &mut DumpReport, class: &DiscoveredClass, error: anyhow::Error) {
+    report.failed += 1;
+    if report.failures.len() < 8 {
+        report
+            .failures
+            .push(format!("{}: {error:#}", class.internal_name));
+    }
 }
 
 impl Layout {
@@ -783,18 +793,14 @@ fn write_bootstrap_methods(out: &mut Vec<u8>, name: u16, methods: &[Vec<u16>]) -
 fn nonzero(value: u16) -> Option<u16> {
     (value != 0).then_some(value)
 }
-fn write_class(root: &Path, name: &str, bytes: &[u8]) -> Result<()> {
+
+fn validate_class_name(name: &str) -> Result<()> {
     if name.starts_with('/')
         || name.contains('\\')
         || name.split('/').any(|part| part == "." || part == "..")
     {
         bail!("unsafe class name");
     }
-    let path = root.join(format!("{name}.class"));
-    if let Some(p) = path.parent() {
-        fs::create_dir_all(p)?
-    }
-    fs::write(path, bytes)?;
     Ok(())
 }
 fn u2(o: &mut Vec<u8>, v: u16) {
