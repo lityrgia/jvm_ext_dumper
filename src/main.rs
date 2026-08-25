@@ -7,10 +7,7 @@ use std::io::{self, IsTerminal, Write};
 use anyhow::{Context, Result};
 use spdlog::prelude::*;
 
-use crate::{
-    app::{ConnectionMode, prompt_config},
-    platform::TargetProcess,
-};
+use crate::{app::prompt_config, platform::TargetProcess};
 
 fn main() {
     let exit_code = if let Err(error) = run() {
@@ -29,29 +26,12 @@ fn run() -> Result<()> {
     platform::ensure_elevated()?;
 
     let config = prompt_config()?;
-    info!(
-        "connection={} pid={}",
-        config.connection.label(),
-        config.pid
-    );
+    info!("connection=OpenProcess (read-only) pid={}", config.pid);
     std::fs::create_dir_all(&config.output)
         .with_context(|| format!("cannot create {}", config.output.display()))?;
 
-    let process = match config.connection {
-        ConnectionMode::OpenProcess => {
-            let process = TargetProcess::open_read_only(config.pid)?;
-            info!("attached with PROCESS_QUERY_INFORMATION | PROCESS_VM_READ");
-            process
-        }
-        ConnectionMode::ExistingHandle => {
-            let raw = config
-                .existing_handle
-                .context("existing HANDLE was not supplied")?;
-            let process = TargetProcess::from_existing_handle(config.pid, raw)?;
-            info!("attached through validated duplicate of supplied HANDLE");
-            process
-        }
-    };
+    let process = TargetProcess::open_read_only(config.pid)?;
+    info!("attached with PROCESS_QUERY_INFORMATION | PROCESS_VM_READ");
 
     let report = hotspot::inspect(&process, &config)?;
     info!(
