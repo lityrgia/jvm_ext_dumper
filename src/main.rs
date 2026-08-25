@@ -5,11 +5,15 @@ mod platform;
 use std::io::{self, IsTerminal, Write};
 
 use anyhow::{Context, Result};
-use spdlog::prelude::*;
+use spdlog::{
+    formatter::{PatternFormatter, pattern},
+    prelude::*,
+};
 
 use crate::{app::prompt_config, platform::TargetProcess};
 
 fn main() {
+    configure_logging();
     let exit_code = if let Err(error) = run() {
         error!("{error:#}");
         1
@@ -20,9 +24,18 @@ fn main() {
     std::process::exit(exit_code);
 }
 
-fn run() -> Result<()> {
+fn configure_logging() {
     spdlog::default_logger()
         .set_level_filter(spdlog::LevelFilter::MoreSevereEqual(spdlog::Level::Info));
+    let formatter = Box::new(PatternFormatter::new(pattern!(
+        "[{time}.{millisecond}] [{^{level}}] {payload}{eol}"
+    )));
+    for sink in spdlog::default_logger().sinks() {
+        sink.set_formatter(formatter.clone());
+    }
+}
+
+fn run() -> Result<()> {
     platform::ensure_elevated()?;
 
     let config = prompt_config()?;
